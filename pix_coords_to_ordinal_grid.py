@@ -1,14 +1,11 @@
 import sys
 import re
-import numpy as np
 
-def average_nearest_neighbor_distance(values):
-    """Estimate grid spacing by averaging the nearest neighbor distance."""
-    values = sorted(set(values))
-    if len(values) < 2:
-        return 1  # avoid divide-by-zero
-    diffs = np.diff(values)
-    return np.min(diffs) if len(diffs) == 1 else np.mean(np.minimum(diffs[:-1], diffs[1:]))
+def average_min_separation(values):
+    """Compute average of minimum separations between sorted unique values."""
+    sorted_vals = sorted(set(values))
+    diffs = [b - a for a, b in zip(sorted_vals[:-1], sorted_vals[1:])]
+    return sum(diffs) / len(diffs) if diffs else 1
 
 def parse_file(filename):
     coords = []
@@ -29,9 +26,9 @@ def main(filename):
     xs, ys = zip(*pixel_coords)
     min_x, min_y = min(xs), min(ys)
 
-    # Updated estimation using nearest-neighbor average spacing
-    grid_x_unit = average_nearest_neighbor_distance(xs)
-    grid_y_unit = average_nearest_neighbor_distance(ys)
+    # ⚠️ This is the crucial fix: average difference between sorted unique values
+    grid_x_unit = average_min_separation(xs)
+    grid_y_unit = average_min_separation(ys)
 
     print(f"# Grid units estimated: dx={grid_x_unit:.2f}, dy={grid_y_unit:.2f}\n")
 
