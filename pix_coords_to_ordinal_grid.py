@@ -1,16 +1,14 @@
 import sys
 import re
-from collections import Counter
+import math
 
-def most_common_step(values):
-    """Find most common step between sorted unique values as grid unit."""
+def average_min_separation(values):
+    """Average of smallest differences between sorted unique values."""
     sorted_vals = sorted(set(values))
+    if len(sorted_vals) < 2:
+        return 1  # avoid division by zero
     diffs = [b - a for a, b in zip(sorted_vals[:-1], sorted_vals[1:])]
-    count = Counter(diffs)
-    most_common = count.most_common(1)
-    if most_common:
-        return most_common[0][0]
-    return 1
+    return sum(diffs) / len(diffs)
 
 def parse_file(filename):
     coords = []
@@ -31,10 +29,11 @@ def main(filename):
     xs, ys = zip(*pixel_coords)
     min_x, min_y = min(xs), min(ys)
 
-    dx = most_common_step(xs)
-    dy = most_common_step(ys)
+    # 👉 Compute average minimum spacing as you originally intended
+    dx = average_min_separation(xs)
+    dy = average_min_separation(ys)
 
-    print(f"# Grid step detected: dx={dx}, dy={dy}\n")
+    print(f"# Estimated grid size: dx = {dx:.2f}, dy = {dy:.2f}\n")
 
     for x, y in pixel_coords:
         gx = round((x - min_x) / dx)
