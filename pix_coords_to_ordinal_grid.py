@@ -1,14 +1,16 @@
 import sys
 import re
-import math
+from collections import Counter
 
-def estimate_grid_unit(values):
-    """Estimate grid spacing using average nearest neighbor distance."""
+def most_common_step(values):
+    """Find most common step between sorted unique values as grid unit."""
     sorted_vals = sorted(set(values))
-    if len(sorted_vals) < 2:
-        return 1
     diffs = [b - a for a, b in zip(sorted_vals[:-1], sorted_vals[1:])]
-    return sum(diffs) / len(diffs)
+    count = Counter(diffs)
+    most_common = count.most_common(1)
+    if most_common:
+        return most_common[0][0]
+    return 1
 
 def parse_file(filename):
     coords = []
@@ -29,15 +31,15 @@ def main(filename):
     xs, ys = zip(*pixel_coords)
     min_x, min_y = min(xs), min(ys)
 
-    grid_x_unit = estimate_grid_unit(xs)
-    grid_y_unit = estimate_grid_unit(ys)
+    dx = most_common_step(xs)
+    dy = most_common_step(ys)
 
-    print(f"# Estimated grid unit: dx = {grid_x_unit:.2f}, dy = {grid_y_unit:.2f}\n")
+    print(f"# Grid step detected: dx={dx}, dy={dy}\n")
 
     for x, y in pixel_coords:
-        grid_x = round((x - min_x) / grid_x_unit)
-        grid_y = round((y - min_y) / grid_y_unit)
-        print(f"{x}, {y} -> {grid_x},{grid_y}")
+        gx = round((x - min_x) / dx)
+        gy = round((y - min_y) / dy)
+        print(f"{x}, {y} -> {gx},{gy}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
