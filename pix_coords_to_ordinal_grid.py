@@ -1,14 +1,13 @@
 import sys
 import re
-import math
 
-def average_min_separation(values):
-    """Average of smallest differences between sorted unique values."""
-    sorted_vals = sorted(set(values))
-    if len(sorted_vals) < 2:
-        return 1  # avoid division by zero
-    diffs = [b - a for a, b in zip(sorted_vals[:-1], sorted_vals[1:])]
-    return sum(diffs) / len(diffs)
+# Hardcoded grid step and origin
+GRID_DX = 102
+GRID_DY = 100
+
+# These are based on your lowest coordinates
+MIN_X = 35
+MIN_Y = 39
 
 def parse_file(filename):
     coords = []
@@ -26,18 +25,9 @@ def main(filename):
         print("No valid coordinates found.")
         return
 
-    xs, ys = zip(*pixel_coords)
-    min_x, min_y = min(xs), min(ys)
-
-    # 👉 Compute average minimum spacing as you originally intended
-    dx = average_min_separation(xs)
-    dy = average_min_separation(ys)
-
-    print(f"# Estimated grid size: dx = {dx:.2f}, dy = {dy:.2f}\n")
-
     for x, y in pixel_coords:
-        gx = round((x - min_x) / dx)
-        gy = round((y - min_y) / dy)
+        gx = round((x - MIN_X) / GRID_DX)
+        gy = round((y - MIN_Y) / GRID_DY)
         print(f"{x}, {y} -> {gx},{gy}")
 
 if __name__ == "__main__":
