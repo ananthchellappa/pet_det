@@ -1,13 +1,7 @@
 import sys
 import re
-
-# Hardcoded grid step and origin
-GRID_DX = 102
-GRID_DY = 100
-
-# These are based on your lowest coordinates
-MIN_X = 35
-MIN_Y = 39
+import numpy as np
+from sklearn.cluster import AgglomerativeClustering
 
 def parse_file(filename):
     coords = []
@@ -19,19 +13,46 @@ def parse_file(filename):
                 coords.append((x, y))
     return coords
 
+def cluster_1d(values, distance_threshold=50):
+    """Cluster 1D values using agglomerative clustering."""
+    values_array = np.array(values).reshape(-1, 1)
+    clustering = AgglomerativeClustering(n_clusters=None, distance_threshold=distance_threshold)
+    labels = clustering.fit_predict(values_array)
+    
+    # Find the average of each cluster
+    clusters = {}
+    for val, label in zip(values, labels):
+        clusters.setdefault(label, []).append(val)
+
+    centers = sorted([np.mean(v) for v in clusters.values()])
+    return centers
+
+def find_nearest_index(centers, value):
+    """Return index of closest center to the value."""
+    return min(range(len(centers)), key=lambda i: abs(centers[i] - value))
+
 def main(filename):
-    pixel_coords = parse_file(filename)
-    if not pixel_coords:
+    coords = parse_file(filename)
+    if not coords:
         print("No valid coordinates found.")
         return
 
-    for x, y in pixel_coords:
-        gx = round((x - MIN_X) / GRID_DX)
-        gy = round((y - MIN_Y) / GRID_DY)
+    xs, ys = zip(*coords)
+
+    # Auto-detect clusters in X and Y with good spacing
+    x_centers = cluster_1d(xs, distance_threshold=60)
+    y_centers = cluster_1d(ys, distance_threshold=60)
+
+    print(f"# Detected columns: {x_centers}")
+    print(f"# Detected rows   : {y_centers}\n")
+
+    for x, y in coords:
+        gx = find_nearest_index(x_centers, x)
+        gy = find_nearest_index(y_centers, y)
         print(f"{x}, {y} -> {gx},{gy}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python grid_transform.py <input_file>")
+        print("Usage: python clustered_grid.py <input_file>")
     else:
         main(sys.argv[1])
