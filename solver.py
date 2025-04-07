@@ -1,5 +1,5 @@
 import sys
-from collections import defaultdict, deque, namedtuple
+from collections import defaultdict, namedtuple
 import heapq
 import re
 
@@ -49,11 +49,32 @@ def get_corresponding_house(animal):
 def get_corresponding_animal(house):
     return house.replace("_house", "")
 
-def heuristic(remaining_animals, remaining_fuel):
-    # Heuristic: number of remaining animals to deliver, weighted
-    return len(remaining_animals) * 10 - remaining_fuel
+def precompute_shortest_paths(graph):
+    shortest_paths = {}
+    for start in graph:
+        dist = {start: 0}
+        queue = [(start, 0)]
+        while queue:
+            current, d = queue.pop(0)
+            for neighbor in graph[current]:
+                if neighbor not in dist:
+                    dist[neighbor] = d + 1
+                    queue.append((neighbor, d + 1))
+        shortest_paths[start] = dist
+    return shortest_paths
 
-def a_star(graph, node_types, start_node, fuel_limit):
+def heuristic(state, animals, houses, shortest_paths):
+    # Estimate based on distance to nearest house for carried pets + pickup locations for undelivered
+    est = 0
+    for pet in state.cargo:
+        house = get_corresponding_house(pet)
+        est += shortest_paths[state.location].get(house, 100)
+    for pet in animals - state.cargo - state.delivered:
+        est += shortest_paths[state.location].get(pet, 100)
+    return est
+
+def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=False):
+    shortest_paths = precompute_shortest_paths(graph)
     heap = []
     visited = {}
     initial_state = State(
@@ -67,12 +88,15 @@ def a_star(graph, node_types, start_node, fuel_limit):
     heapq.heappush(heap, initial_state)
     best_path = []
     max_delivered = 0
+    steps = 0
 
     while heap:
         state = heapq.heappop(heap)
-        key = (state.location, state.cargo, state.delivered)
+        steps += 1
+        if debug and steps % 1000 == 0:
+            print(f"[DEBUG] Steps: {steps}, Queue size: {len(heap)}, Delivered: {len(state.delivered)}")
 
-        # Skip worse states
+        key = (state.location, state.cargo, state.delivered)
         if key in visited and visited[key] >= state.fuel:
             continue
         visited[key] = state.fuel
@@ -108,9 +132,7 @@ def a_star(graph, node_types, start_node, fuel_limit):
             elif node_types[neighbor] == EMPTY:
                 next_path.append(f"Step {len(next_path)} : Visit the {neighbor}")
 
-            remaining_animals = set(graph.keys()) - next_delivered
-            h = heuristic(set(graph.keys()) - next_delivered, next_fuel)
-
+            h = heuristic(state, animals, houses, shortest_paths)
             new_state = State(
                 priority=len(next_path) + h,
                 location=neighbor,
@@ -126,14 +148,15 @@ def a_star(graph, node_types, start_node, fuel_limit):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python pet_detective_solver.py <graph_file.txt> <fuel_limit>")
+        print("Usage: python pet_detective_solver.py <graph_file.txt> <fuel_limit> [DEBUG]")
         sys.exit(1)
 
     file_path = sys.argv[1]
     fuel_limit = int(sys.argv[2])
+    debug = (len(sys.argv) > 3 and sys.argv[3] == "DEBUG")
 
     graph, node_types, animals, houses, start_node = parse_input(file_path)
-    best_path = a_star(graph, node_types, start_node, fuel_limit)
+    best_path = a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug)
 
     print("\nOptimal Sequence:")
     for step in best_path:
