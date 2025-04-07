@@ -83,7 +83,7 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
         cargo=frozenset(),
         delivered=frozenset(),
         fuel=fuel_limit,
-        path=[f"Start at {start_node} (fuel: {fuel_limit}, cargo: [])"]
+        path=[f"Start at {start_node} (fuel: {fuel_limit}, cargo: [], pending: {sorted(animals)})"]
     )
     heapq.heappush(heap, initial_state)
     best_path = []
@@ -110,27 +110,31 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
 
         for neighbor in graph[state.location]:
             next_fuel = state.fuel - 1
-            next_path = list(state.path)
-            next_path.append(f"Step {len(next_path)} : Go to {neighbor} (fuel: {next_fuel}, cargo: {sorted(state.cargo)})")
             next_cargo = set(state.cargo)
             next_delivered = set(state.delivered)
+            remaining_animals = animals - next_cargo - next_delivered
+            pending_text = f", pending: {sorted(remaining_animals)}" if len(remaining_animals) < 4 else ""
+            next_path = list(state.path)
+            next_path.append(f"Step {len(next_path)} : Go to {neighbor} (fuel: {next_fuel}, cargo: {sorted(state.cargo)}{pending_text})")
 
             if node_types[neighbor] == ANIMAL and neighbor not in state.cargo and neighbor not in state.delivered:
                 if len(state.cargo) < CAPACITY:
                     next_cargo.add(neighbor)
-                    next_path.append(f"Step {len(next_path)} : Pick up the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
+                    pending_text = f", pending: {sorted(animals - next_cargo - next_delivered)}" if len(animals - next_cargo - next_delivered) < 4 else ""
+                    next_path.append(f"Step {len(next_path)} : Pick up the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)}{pending_text})")
                 else:
-                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (car full) (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
+                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (car full) (fuel: {next_fuel}, cargo: {sorted(next_cargo)}{pending_text})")
             elif node_types[neighbor] == HOUSE:
                 animal = get_corresponding_animal(neighbor)
                 if animal in next_cargo:
                     next_cargo.remove(animal)
                     next_delivered.add(animal)
-                    next_path.append(f"Step {len(next_path)} : Drop off the {animal} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
+                    pending_text = f", pending: {sorted(animals - next_cargo - next_delivered)}" if len(animals - next_cargo - next_delivered) < 4 else ""
+                    next_path.append(f"Step {len(next_path)} : Drop off the {animal} (fuel: {next_fuel}, cargo: {sorted(next_cargo)}{pending_text})")
                 else:
-                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
+                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)}{pending_text})")
             elif node_types[neighbor] == EMPTY:
-                next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
+                next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)}{pending_text})")
 
             h = heuristic(state, animals, houses, shortest_paths)
             new_state = State(
