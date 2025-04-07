@@ -16,7 +16,8 @@ mkdir -p "$OUTPUT_DIRECTORY"
 
 # Step 1: Run detect_subjects.py and process output to cv_out.txt
 python3 detect_subjects.py "$INPUT_IMAGE_PATH" templates | \
-perl -n -e 's/_PD//; print if /center/;' > "$OUTPUT_DIRECTORY/cv_out.txt"
+perl -n -e 's/_PD//; print if /center/;' | \
+perl -p -e 'BEGIN { our $c = 0 } s/empty\.png/"empty" . ($c++ ? $c : "").".png"/ge' > "$OUTPUT_DIRECTORY/cv_out.txt"
 
 # Step 2: Generate graph_input.txt from cv_out.txt
 cat "$OUTPUT_DIRECTORY/cv_out.txt" | \
