@@ -40,6 +40,7 @@ def non_max_suppression_fast(boxes, overlapThresh=0.5):
 
 def find_subjects_in_image(test_img, subject_imgs, threshold=0.9, nms_thresh=0.3):
     matches = []
+    subject_found_flags = {}
 
     for subject_id, (subject_name, subject) in enumerate(subject_imgs):
         h, w = subject.shape[:2]
@@ -52,7 +53,10 @@ def find_subjects_in_image(test_img, subject_imgs, threshold=0.9, nms_thresh=0.3
             boxes.append([pt[0], pt[1], pt[0] + w, pt[1] + h, score])
 
         keep = non_max_suppression_fast(boxes, overlapThresh=nms_thresh)
+
+        found_any = False
         for i in keep:
+            found_any = True
             x1, y1, x2, y2, score = boxes[i]
             matches.append({
                 'subject_id': subject_id,
@@ -63,7 +67,9 @@ def find_subjects_in_image(test_img, subject_imgs, threshold=0.9, nms_thresh=0.3
                 'score': float(score)
             })
 
-    return matches
+        subject_found_flags[os.path.basename(subject_name)] = found_any
+
+    return matches, subject_found_flags
 
 def load_subject_images(folder):
     image_paths = sorted(glob(os.path.join(folder, "*.*")))
@@ -94,12 +100,20 @@ def main():
         print(f"Error: No valid subject images found in folder: {subject_folder}")
         sys.exit(1)
 
-    matches = find_subjects_in_image(test_img, subject_imgs)
+    matches, subject_found_flags = find_subjects_in_image(test_img, subject_imgs)
 
     print("\nDetected subject positions:")
     for match in matches:
         print(f"{match['subject_name']} at {match['top_left']} to {match['bottom_right']} "
               f"(center: {match['center']}, score: {match['score']:.2f})")
+
+    missing_subjects = [name for name, found in subject_found_flags.items() if not found]
+    if missing_subjects:
+        print("\n⚠️ Templates NOT found in the test image:")
+        for name in missing_subjects:
+            print(f"- {name}")
+    else:
+        print("\n✅ All templates found in the test image.")
 
 if __name__ == "__main__":
     main()
