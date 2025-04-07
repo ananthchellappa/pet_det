@@ -85,6 +85,11 @@ def clean_path(path):
             if match_i and match_j and match_i.group(1) == match_j.group(1):
                 i += 2  # skip both
                 continue
+            match_i2 = re.match(r"Step \d+ : Go to (.+?) ", step_i)
+            match_j2 = re.match(r"Step \d+ : Go to (.+?) ", step_j)
+            if match_i2 and match_j2:
+                i += 1  # skip the first go-to (no action happened)
+                continue
         cleaned.append(path[i])
         i += 1
     return cleaned
