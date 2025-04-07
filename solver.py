@@ -2,6 +2,7 @@ import sys
 from collections import defaultdict, namedtuple
 import heapq
 import re
+import time
 
 # Constants
 CAPACITY = 4
@@ -64,7 +65,6 @@ def precompute_shortest_paths(graph):
     return shortest_paths
 
 def heuristic(state, animals, houses, shortest_paths):
-    # Estimate based on distance to nearest house for carried pets + pickup locations for undelivered
     est = 0
     for pet in state.cargo:
         house = get_corresponding_house(pet)
@@ -83,7 +83,7 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
         cargo=frozenset(),
         delivered=frozenset(),
         fuel=fuel_limit,
-        path=[f"Start at {start_node}"]
+        path=[f"Start at {start_node} (fuel: {fuel_limit}, cargo: [])"]
     )
     heapq.heappush(heap, initial_state)
     best_path = []
@@ -111,26 +111,26 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
         for neighbor in graph[state.location]:
             next_fuel = state.fuel - 1
             next_path = list(state.path)
-            next_path.append(f"Step {len(next_path)} : Go to {neighbor}")
+            next_path.append(f"Step {len(next_path)} : Go to {neighbor} (fuel: {next_fuel}, cargo: {sorted(state.cargo)})")
             next_cargo = set(state.cargo)
             next_delivered = set(state.delivered)
 
             if node_types[neighbor] == ANIMAL and neighbor not in state.cargo and neighbor not in state.delivered:
                 if len(state.cargo) < CAPACITY:
                     next_cargo.add(neighbor)
-                    next_path.append(f"Step {len(next_path)} : Pick up the {neighbor}")
+                    next_path.append(f"Step {len(next_path)} : Pick up the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
                 else:
-                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (car full)")
+                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (car full) (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
             elif node_types[neighbor] == HOUSE:
                 animal = get_corresponding_animal(neighbor)
                 if animal in next_cargo:
                     next_cargo.remove(animal)
                     next_delivered.add(animal)
-                    next_path.append(f"Step {len(next_path)} : Drop off the {animal}")
+                    next_path.append(f"Step {len(next_path)} : Drop off the {animal} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
                 else:
-                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor}")
+                    next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
             elif node_types[neighbor] == EMPTY:
-                next_path.append(f"Step {len(next_path)} : Visit the {neighbor}")
+                next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (fuel: {next_fuel}, cargo: {sorted(next_cargo)})")
 
             h = heuristic(state, animals, houses, shortest_paths)
             new_state = State(
@@ -155,12 +155,15 @@ def main():
     fuel_limit = int(sys.argv[2])
     debug = (len(sys.argv) > 3 and sys.argv[3] == "DEBUG")
 
+    start_time = time.time()
     graph, node_types, animals, houses, start_node = parse_input(file_path)
     best_path = a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug)
+    elapsed = time.time() - start_time
 
     print("\nOptimal Sequence:")
     for step in best_path:
         print(step)
+    print(f"\nElapsed time: {elapsed:.2f} seconds")
 
 if __name__ == "__main__":
     main()
