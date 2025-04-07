@@ -36,7 +36,7 @@ def parse_input(file_path):
                 elif node.endswith("_house"):
                     node_types[node] = HOUSE
                     houses.add(node)
-                elif node == "empty":
+                elif re.match(r"empty\d*", node):
                     node_types[node] = EMPTY
                 else:
                     node_types[node] = ANIMAL
