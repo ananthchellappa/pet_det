@@ -73,6 +73,22 @@ def heuristic(state, animals, houses, shortest_paths):
         est += shortest_paths[state.location].get(pet, 100)
     return est
 
+def clean_path(path):
+    cleaned = []
+    i = 0
+    while i < len(path):
+        if i + 1 < len(path):
+            step_i = path[i]
+            step_j = path[i + 1]
+            match_i = re.match(r"Step \d+ : Go to (.+?) ", step_i)
+            match_j = re.match(r"Step \d+ : Visit the (.+?) ", step_j)
+            if match_i and match_j and match_i.group(1) == match_j.group(1):
+                i += 2  # skip both
+                continue
+        cleaned.append(path[i])
+        i += 1
+    return cleaned
+
 def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=False):
     shortest_paths = precompute_shortest_paths(graph)
     heap = []
@@ -153,7 +169,8 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
 
             heapq.heappush(heap, new_state)
 
-    return full_solution_path if full_solution_path else best_path, full_solution_path is not None
+    final_path = full_solution_path if full_solution_path else best_path
+    return clean_path(final_path), full_solution_path is not None
 
 def main():
     if len(sys.argv) < 3:
