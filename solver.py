@@ -88,6 +88,7 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
     heapq.heappush(heap, initial_state)
     best_path = []
     max_delivered = 0
+    full_solution_path = None
     steps = 0
 
     while heap:
@@ -104,6 +105,10 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
         if len(state.delivered) > max_delivered:
             max_delivered = len(state.delivered)
             best_path = state.path
+
+        if len(state.delivered) == len(animals):
+            full_solution_path = state.path
+            break
 
         if state.fuel == 0:
             continue
@@ -148,7 +153,7 @@ def a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug=Fal
 
             heapq.heappush(heap, new_state)
 
-    return best_path
+    return full_solution_path if full_solution_path else best_path, full_solution_path is not None
 
 def main():
     if len(sys.argv) < 3:
@@ -161,13 +166,19 @@ def main():
 
     start_time = time.time()
     graph, node_types, animals, houses, start_node = parse_input(file_path)
-    best_path = a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug)
+    best_path, full_delivered = a_star(graph, node_types, animals, houses, start_node, fuel_limit, debug)
     elapsed = time.time() - start_time
 
     print("\nOptimal Sequence:")
     for step in best_path:
         print(step)
-    print(f"\nElapsed time: {elapsed:.2f} seconds")
+
+    if full_delivered:
+        print("\n✅ Full delivery successful!")
+    else:
+        print("\n⚠️ Only partial delivery possible with given fuel.")
+
+    print(f"Elapsed time: {elapsed:.2f} seconds")
 
 if __name__ == "__main__":
     main()
