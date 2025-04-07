@@ -1,5 +1,6 @@
 import sys
 from collections import defaultdict, deque, namedtuple
+import heapq
 import re
 
 # Constants
@@ -11,7 +12,7 @@ HOUSE = "house"
 EMPTY = "empty"
 
 # State representation
-State = namedtuple("State", ["location", "cargo", "delivered", "fuel", "path"])
+State = namedtuple("State", ["priority", "location", "cargo", "delivered", "fuel", "path"])
 
 def parse_input(file_path):
     graph = defaultdict(set)
@@ -42,35 +43,39 @@ def parse_input(file_path):
 
     return graph, node_types, animals, houses, start_node
 
-def is_house(node):
-    return node.endswith("_house")
-
 def get_corresponding_house(animal):
     return f"{animal}_house"
 
 def get_corresponding_animal(house):
     return house.replace("_house", "")
 
-def bfs(graph, node_types, start_node, fuel_limit):
-    queue = deque()
-    visited = set()
+def heuristic(remaining_animals, remaining_fuel):
+    # Heuristic: number of remaining animals to deliver, weighted
+    return len(remaining_animals) * 10 - remaining_fuel
+
+def a_star(graph, node_types, start_node, fuel_limit):
+    heap = []
+    visited = {}
     initial_state = State(
+        priority=0,
         location=start_node,
         cargo=frozenset(),
         delivered=frozenset(),
         fuel=fuel_limit,
         path=[f"Start at {start_node}"]
     )
-    queue.append(initial_state)
+    heapq.heappush(heap, initial_state)
     best_path = []
     max_delivered = 0
 
-    while queue:
-        state = queue.popleft()
+    while heap:
+        state = heapq.heappop(heap)
+        key = (state.location, state.cargo, state.delivered)
 
-        if (state.location, state.cargo, state.delivered, state.fuel) in visited:
+        # Skip worse states
+        if key in visited and visited[key] >= state.fuel:
             continue
-        visited.add((state.location, state.cargo, state.delivered, state.fuel))
+        visited[key] = state.fuel
 
         if len(state.delivered) > max_delivered:
             max_delivered = len(state.delivered)
@@ -81,32 +86,33 @@ def bfs(graph, node_types, start_node, fuel_limit):
 
         for neighbor in graph[state.location]:
             next_fuel = state.fuel - 1
-            next_path = state.path + [f"Step {len(state.path)} : Go to {neighbor}"]
+            next_path = list(state.path)
+            next_path.append(f"Step {len(next_path)} : Go to {neighbor}")
             next_cargo = set(state.cargo)
             next_delivered = set(state.delivered)
 
-            # Pick up logic
             if node_types[neighbor] == ANIMAL and neighbor not in state.cargo and neighbor not in state.delivered:
                 if len(state.cargo) < CAPACITY:
                     next_cargo.add(neighbor)
                     next_path.append(f"Step {len(next_path)} : Pick up the {neighbor}")
                 else:
                     next_path.append(f"Step {len(next_path)} : Visit the {neighbor} (car full)")
-
-            # Drop off logic
             elif node_types[neighbor] == HOUSE:
                 animal = get_corresponding_animal(neighbor)
-                if animal in state.cargo:
+                if animal in next_cargo:
                     next_cargo.remove(animal)
                     next_delivered.add(animal)
                     next_path.append(f"Step {len(next_path)} : Drop off the {animal}")
                 else:
                     next_path.append(f"Step {len(next_path)} : Visit the {neighbor}")
-
             elif node_types[neighbor] == EMPTY:
                 next_path.append(f"Step {len(next_path)} : Visit the {neighbor}")
 
+            remaining_animals = set(graph.keys()) - next_delivered
+            h = heuristic(set(graph.keys()) - next_delivered, next_fuel)
+
             new_state = State(
+                priority=len(next_path) + h,
                 location=neighbor,
                 cargo=frozenset(next_cargo),
                 delivered=frozenset(next_delivered),
@@ -114,7 +120,7 @@ def bfs(graph, node_types, start_node, fuel_limit):
                 path=next_path
             )
 
-            queue.append(new_state)
+            heapq.heappush(heap, new_state)
 
     return best_path
 
@@ -127,7 +133,7 @@ def main():
     fuel_limit = int(sys.argv[2])
 
     graph, node_types, animals, houses, start_node = parse_input(file_path)
-    best_path = bfs(graph, node_types, start_node, fuel_limit)
+    best_path = a_star(graph, node_types, start_node, fuel_limit)
 
     print("\nOptimal Sequence:")
     for step in best_path:
